@@ -46,7 +46,6 @@ public class EventSubscriber implements ApplicationListener<ContextRefreshedEven
     }
 
 
-
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
         applicationContext = event.getApplicationContext();
@@ -60,7 +59,6 @@ public class EventSubscriber implements ApplicationListener<ContextRefreshedEven
 
     /**
      * 初始化数据
-     *
      * @param handlers
      */
     private void init(Collection<EventMessageHandler> handlers) {
@@ -68,28 +66,45 @@ public class EventSubscriber implements ApplicationListener<ContextRefreshedEven
             EventMessageHandler originalHandler = AopTargetUtils.getTarget(h);
             log.info(String.format("开始注册消息处理器：%s", originalHandler.getClass().getName()));
             Type[] types = originalHandler.getClass().getGenericInterfaces();
-            Class<?> clazz = (Class<?>) ((ParameterizedType)types[0]).getActualTypeArguments()[0];
+            Class<?> clazz = (Class<?>) ((ParameterizedType) types[0]).getActualTypeArguments()[0];
             EventMessageListener annotation = ServiceHelper.retrieveMessageListener(originalHandler.getClass());
             subscribe(annotation, clazz, h);
             log.info(String.format("已注册消息【%s】的处理器：%s", clazz.getName(), originalHandler.getClass().getName()));
         });
     }
 
-
+    /**
+     * 订阅
+     * @param annotation
+     * @param event
+     * @param handler
+     * @param <T>
+     */
     public <T> void subscribe(EventMessageListener annotation, Class<T> event, EventMessageHandler<T> handler) {
         EventMessage crawlMessage = ServiceHelper.retrieveLeopardMessage(event);
         EventKafkaEventListener<T> eventListener = applicationContext.getBean(EventKafkaEventListener.class);
         eventListener.setHandler(handler);
         eventListener.setConsumerGroup(annotation.group());
         eventListener.setEvent(event);
-        subscribe(annotation.group(),crawlMessage.topic(), annotation.maxPollIntervalMs(), annotation.maxPollRecords(),annotation.commitIntervalMs(), event, eventListener);
+        subscribe(annotation.group(), crawlMessage.topic(), annotation.maxPollIntervalMs(), annotation.maxPollRecords(), annotation.commitIntervalMs(), event, eventListener);
     }
 
-    private <T> void subscribe(String group, String topic, long maxPollIntervalMs, int maxPollRecords,long commitIntervalMs, Class<T> clazz, Object eventListener) {
+    /**
+     * 订阅实现
+     * @param group
+     * @param topic
+     * @param maxPollIntervalMs
+     * @param maxPollRecords
+     * @param commitIntervalMs
+     * @param clazz
+     * @param eventListener
+     * @param <T>
+     */
+    private <T> void subscribe(String group, String topic, long maxPollIntervalMs, int maxPollRecords, long commitIntervalMs, Class<T> clazz, Object eventListener) {
         String key = calculateHashCode(group, topic);
         String newTopic = generateTopic(topic);
         ConcurrentMessageListenerContainer<String, String> container = ServiceHelper.createListenerContainer(group, newTopic,
-                maxPollIntervalMs, maxPollRecords,commitIntervalMs, consumerFactory, eventListener);
+                maxPollIntervalMs, maxPollRecords, commitIntervalMs, consumerFactory, eventListener);
         ConcurrentMessageListenerContainer<String, String> existContainer = consumers.putIfAbsent(key, container);
         container = existContainer == null ? container : existContainer;
         if (!container.isRunning()) {
@@ -98,11 +113,24 @@ public class EventSubscriber implements ApplicationListener<ContextRefreshedEven
         log.info(String.format("已注册 %s 的消费者 %s", newTopic, group));
     }
 
+    /**
+     * 主题信息
+     *
+     * @param topic
+     * @return
+     */
     private String generateTopic(String topic) {
 
         return String.format("%s.%s", sysConfig.getTopicPrefix(), topic);
     }
 
+    /**
+     * 计算hash值
+     *
+     * @param group
+     * @param topic
+     * @return
+     */
     private String calculateHashCode(String group, String topic) {
         return String.format("%s.%s", group, topic);
     }

@@ -6,7 +6,7 @@
 
     <groupId>cn.shazhengbo</groupId>
     <artifactId>kafka-common</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
@@ -20,6 +20,7 @@
             <url>https://github.com/CrazyShaQuiShi</url>
         </developer>
     </developers>
+    <description>基于SpringBoot封装的kafka工具包。</description>
     <distributionManagement>
         <snapshotRepository>
             <id>sonatype-nexus-snapshots</id>
