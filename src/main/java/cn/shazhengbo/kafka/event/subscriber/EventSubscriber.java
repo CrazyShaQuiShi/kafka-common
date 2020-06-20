@@ -114,8 +114,7 @@ public class EventSubscriber implements ApplicationListener<ContextRefreshedEven
     }
 
     /**
-     * 主题信息
-     *
+     * 自动组成主题信息
      * @param topic
      * @return
      */
