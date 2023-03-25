@@ -43,4 +43,10 @@ public @interface EventMessageListener {
      */
     long maxPollIntervalMs() default 60000L;
 
+    /**
+     * 配置 Consumer 等待请求响应的最长时间，默认值为30000
+     * @return
+     */
+    long requestTimeoutMs() default  30000L;
+
 }

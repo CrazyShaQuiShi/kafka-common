@@ -4,12 +4,13 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 
 @Component
 @Getter
 @Setter
-@Configuration
+@Configuration(proxyBeanMethods = true)
 @ConfigurationProperties(prefix = "sys")
 public class SysConfig {
     /**
@@ -20,6 +21,7 @@ public class SysConfig {
      * 是否为master
      */
     private boolean master;
+
     /**
      * 设备名称
      */
@@ -28,4 +30,8 @@ public class SysConfig {
      * url地址
      */
     private String address;
+    /**
+     * 是否开启消息存储,默认false
+     */
+    private boolean storeMessage=false;
 }

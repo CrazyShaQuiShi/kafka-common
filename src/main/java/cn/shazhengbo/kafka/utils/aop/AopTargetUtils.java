@@ -20,7 +20,10 @@ public abstract class AopTargetUtils {
     public static <T> T getTarget(T proxy) {
 
         if(!AopUtils.isAopProxy(proxy)) {
-            return proxy;//不是代理对象
+            /**
+             * 不是代理对象
+             */
+            return proxy;
         }
 
         T target;

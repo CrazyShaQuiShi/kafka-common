@@ -1,0 +1,6 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  cn.shazhengbo.kafka.config.SysConfig,\
+  cn.shazhengbo.kafka.message.EventMessageTemplate,\
+  cn.shazhengbo.kafka.event.listener.EventKafkaEventListener,\
+  cn.shazhengbo.kafka.event.subscriber.EventSubscriber
+

@@ -4,9 +4,6 @@ import cn.shazhengbo.kafka.annotation.EventMessage;
 import cn.shazhengbo.kafka.annotation.EventMessageListener;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.protocol.types.Field;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
@@ -22,7 +19,6 @@ import java.util.Properties;
 @Slf4j
 public abstract class ServiceHelper {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(ServiceHelper.class);
 
     /**
      * 获取消息注解
@@ -50,23 +46,23 @@ public abstract class ServiceHelper {
     }
 
 
-    public static ConcurrentMessageListenerContainer<String, String> createListenerContainer(String group, String topic, long maxPollIntervalMs, int maxPollRecords, long commitIntervalMs, ConsumerFactory consumerFactory,
+    public static ConcurrentMessageListenerContainer<String, String> createListenerContainer(EventMessageListener annotation,String topic, ConsumerFactory consumerFactory,
                                                                                              Object messageListener) {
         ContainerProperties containerProperties = new ContainerProperties(topic);
-        containerProperties.setGroupId(group);
+        containerProperties.setGroupId(annotation.group());
         containerProperties.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
-        containerProperties.setAckOnError(false);
-        containerProperties.setPollTimeout(maxPollIntervalMs);
+        containerProperties.setPollTimeout(annotation.maxPollIntervalMs());
         containerProperties.setMessageListener(messageListener);
         Properties kafkaConsumerProperties = new Properties();
-        kafkaConsumerProperties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, String.valueOf(maxPollRecords));
-        kafkaConsumerProperties.setProperty(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, String.valueOf(maxPollIntervalMs));
-        kafkaConsumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,String.valueOf(false));
-        kafkaConsumerProperties.setProperty(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, String.valueOf(commitIntervalMs));
+        kafkaConsumerProperties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, String.valueOf(annotation.maxPollRecords()));
+        kafkaConsumerProperties.setProperty(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, String.valueOf(annotation.maxPollIntervalMs()));
+        kafkaConsumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, String.valueOf(false));
+        kafkaConsumerProperties.setProperty(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, String.valueOf(annotation.requestTimeoutMs()));
+        kafkaConsumerProperties.setProperty(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, String.valueOf(annotation.commitIntervalMs()));
         containerProperties.setKafkaConsumerProperties(kafkaConsumerProperties);
         ConcurrentMessageListenerContainer<String, String> container = new ConcurrentMessageListenerContainer<String, String>(consumerFactory, containerProperties);
         container.setAutoStartup(false);
-        container.setBeanName(String.format("%s-%s", topic, group));
+        container.setBeanName(String.format("%s-%s", topic, annotation.group()));
         return container;
     }
 

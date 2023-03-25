@@ -5,7 +5,7 @@ import cn.shazhengbo.kafka.annotation.EventMessageListener;
 import cn.shazhengbo.kafka.config.SysConfig;
 import cn.shazhengbo.kafka.event.ServiceHelper;
 import cn.shazhengbo.kafka.event.listener.EventKafkaEventListener;
-import cn.shazhengbo.kafka.message.EventMessageHandler;
+import cn.shazhengbo.kafka.message.KafkaEventMessageHandler;
 import cn.shazhengbo.kafka.utils.aop.AopTargetUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * @author: crazyshaqiushi
  * @create_time: 2019/12/11-9:39
- * @description: 爬虫消息订阅类
+ * @description: 消息订阅类
  * @version:1.0.0
  */
 @Slf4j
@@ -53,68 +53,68 @@ public class EventSubscriber implements ApplicationListener<ContextRefreshedEven
          * 获取spring容器中所有实现了EventMessageHandler接口的Bean,并注册相应事件的监听器
          * {@link cn.shazhengbo.kafka.message.EventMessageHandler}
          */
-        Map<String, EventMessageHandler> handlers = event.getApplicationContext().getBeansOfType(EventMessageHandler.class);
+        Map<String, KafkaEventMessageHandler> handlers = event.getApplicationContext().getBeansOfType(KafkaEventMessageHandler.class);
         init(handlers.values());
     }
 
     /**
      * 初始化数据
+     *
      * @param handlers
      */
-    private void init(Collection<EventMessageHandler> handlers) {
+    private void init(Collection<KafkaEventMessageHandler> handlers) {
         handlers.forEach(h -> {
-            EventMessageHandler originalHandler = AopTargetUtils.getTarget(h);
+            KafkaEventMessageHandler originalHandler = AopTargetUtils.getTarget(h);
             log.info(String.format("开始注册消息处理器：%s", originalHandler.getClass().getName()));
             Type[] types = originalHandler.getClass().getGenericInterfaces();
-            Class<?> clazz = (Class<?>) ((ParameterizedType) types[0]).getActualTypeArguments()[0];
-            EventMessageListener annotation = ServiceHelper.retrieveMessageListener(originalHandler.getClass());
-            subscribe(annotation, clazz, h);
-            log.info(String.format("已注册消息【%s】的处理器：%s", clazz.getName(), originalHandler.getClass().getName()));
+            if (!types[0].getTypeName().equals(KafkaEventMessageHandler.class.getTypeName())) {
+                Class<?> clazz = (Class<?>) ((ParameterizedType) types[0]).getActualTypeArguments()[0];
+                EventMessageListener annotation = ServiceHelper.retrieveMessageListener(originalHandler.getClass());
+                subscribe(annotation, clazz, h);
+                log.info(String.format("已注册消息【%s】的处理器：%s", clazz.getName(), originalHandler.getClass().getName()));
+            }
         });
     }
 
     /**
      * 订阅
+     *
      * @param annotation
      * @param event
      * @param handler
      * @param <T>
      */
-    public <T> void subscribe(EventMessageListener annotation, Class<T> event, EventMessageHandler<T> handler) {
+    public <T> void subscribe(EventMessageListener annotation, Class<T> event, KafkaEventMessageHandler<T> handler) {
         EventMessage crawlMessage = ServiceHelper.retrieveLeopardMessage(event);
         EventKafkaEventListener<T> eventListener = applicationContext.getBean(EventKafkaEventListener.class);
         eventListener.setHandler(handler);
         eventListener.setConsumerGroup(annotation.group());
         eventListener.setEvent(event);
-        subscribe(annotation.group(), crawlMessage.topic(), annotation.maxPollIntervalMs(), annotation.maxPollRecords(), annotation.commitIntervalMs(), event, eventListener);
+        subscribe(annotation, crawlMessage.topic(), eventListener);
     }
 
     /**
-     * 订阅实现
-     * @param group
+     *  订阅实现
+     * @param annotation
      * @param topic
-     * @param maxPollIntervalMs
-     * @param maxPollRecords
-     * @param commitIntervalMs
-     * @param clazz
      * @param eventListener
      * @param <T>
      */
-    private <T> void subscribe(String group, String topic, long maxPollIntervalMs, int maxPollRecords, long commitIntervalMs, Class<T> clazz, Object eventListener) {
-        String key = calculateHashCode(group, topic);
+    private <T> void subscribe(EventMessageListener annotation, String topic,Object eventListener) {
+        String key = calculateHashCode(annotation.group(), topic);
         String newTopic = generateTopic(topic);
-        ConcurrentMessageListenerContainer<String, String> container = ServiceHelper.createListenerContainer(group, newTopic,
-                maxPollIntervalMs, maxPollRecords, commitIntervalMs, consumerFactory, eventListener);
+        ConcurrentMessageListenerContainer<String, String> container = ServiceHelper.createListenerContainer(annotation, newTopic, consumerFactory, eventListener);
         ConcurrentMessageListenerContainer<String, String> existContainer = consumers.putIfAbsent(key, container);
         container = existContainer == null ? container : existContainer;
         if (!container.isRunning()) {
             container.start();
         }
-        log.info(String.format("已注册 %s 的消费者 %s", newTopic, group));
+        log.info(String.format("已注册 %s 的消费者 %s", newTopic, annotation.group()));
     }
 
     /**
      * 自动组成主题信息
+     *
      * @param topic
      * @return
      */
